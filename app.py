@@ -1,33 +1,40 @@
-from flask import Flask
+from flask import Flask, jsonify
 from datetime import datetime
 from flask_cors import CORS, cross_origin
 
 import redis
-r = redis.Redis(host='localhost', port=6379, db=0)
+r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
 
 app = Flask(__name__)
 cors = CORS(app) # allow CORS for all domains on all routes.
 
-time_now = ""
-
-@app.route("/")
-def hello_world():
-    return "<p>Hello, World!</p>"
-
 @app.route("/latest")
 def latest():
+    notification = r.get("latest_notification")
+
+    print(notification)
+
+    # deletes the key from the db
+    r.delete("latest_notification")
+
     response = {
         "message": "Pomodoro finished!",
-        "time": time_now
+        "time": notification,
+        "status":"ok"
     }
-    return response
+
+    if notification is None:
+        return {"new": False}
+    else:
+        return response
 
 @app.route("/notify", methods=["POST"])
 def notify():
-    global time_now
     time_now = datetime.now().strftime("%H:%M:%S")
-    return "pomodoro completed!"
+
+    r.set("latest_notification", time_now)
+    return {"status": "ok"}
 
 
 
